@@ -116,7 +116,7 @@ async function trainAndPredict(){
     const inputRaw = tf.tensor2d([[24, 1300, 5, 9]])
     const inputNorm = inputRaw.sub(xsMin).div(xsMax.sub(xsMin))
 
-    const predNorm = model.predict(inputNorm)
+    const predNorm = loadedModel.predict(inputNorm)
     const pred = predNorm.mul(ysMax.sub(ysMin)).add(ysMin)
 
     pred.print()
