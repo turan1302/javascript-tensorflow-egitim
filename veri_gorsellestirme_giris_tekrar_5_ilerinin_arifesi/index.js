@@ -150,7 +150,8 @@ async function createModel(){
     // model derleyelim
     model.compile({
         optimizer : "adam",
-        loss : "meanSquaredError"
+        loss : "meanSquaredError",
+        metrics : ["mae"]
     })
 
     return model
@@ -161,12 +162,14 @@ async function trainAndPredict(){
     const fit_model = await createModel()
 
     const lossValues = []
+    const maeValues = []
 
     const fit_model_result = await fit_model.fit(xsNorm,ysNorm,{
         epochs : 250,
         callbacks : {
             onEpochEnd : async (epoch, logs) => {
                 lossValues.push(logs.loss)
+                maeValues.push(logs.mae)
             }
         }
     })
@@ -185,9 +188,10 @@ async function trainAndPredict(){
 
     // doğruluk analizi
     const trust_analysis = await fit_model.evaluate(xsNorm,ysNorm)
+    const [lossTensor] = trust_analysis;  // metrics : ["mae"] olduğu için çıktılar bir dizi
 
     console.log("Son Model Kaybı: ",fit_model_result.history.loss.at(-1))
-    console.log("Doğruluk: ",trust_analysis.dataSync()[0])
+    console.log("Doğruluk: ",lossTensor.dataSync()[0])
     pred.print()
 
     // plot kısmı
@@ -195,14 +199,25 @@ async function trainAndPredict(){
         x : Array.from({length : lossValues.length},(_,i)=>i+1),
         y : lossValues,
         type : "line",
-        name : "Loss"
+        name : "LOSS",
+        line : {
+            color : "red"
+        }
+    },{
+        x : Array.from({length : maeValues.length},(_,i)=>i+1),
+        y : maeValues,
+        type : "line",
+        name : "MAE",
+        line : {
+            color : "green"
+        }
     }],{
-        title : "Kayıp Grafiği (Loss)",
+        title : "Kayıp Grafiği (Loss) ve MAE Grafiği",
         xaxis : {
             title : "Epochs"
         },
         yaxis : {
-            title : "Kayıp Değeri"
+            title : "Değerler"
         }
     })
 }
