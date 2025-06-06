@@ -146,6 +146,12 @@ async function trainAndPredict(){
 
     const loadedModel = await tf.loadLayersModel("file://./model/model.json")
 
+    loadedModel.compile({
+        optimizer : "adam",
+        loss : "meanSquaredError",
+        metrics : ["mae"]
+    })
+
     const inputRaw = tf.tensor2d(xsRaw)
     const inputNorm = inputRaw.sub(xsMin).div(xsMax.sub(xsMin))
 
@@ -153,7 +159,7 @@ async function trainAndPredict(){
     const pred = predNorm.mul(ysMax.sub(ysMin)).add(ysMin)
 
     // doğrulıuk analizi
-    const trust_analysis = await fit_model.evaluate(xsNorm,ysNorm)
+    const trust_analysis = await loadedModel.evaluate(xsNorm,ysNorm)
     const [maeTensor,lossTensor]=trust_analysis
 
     console.log("Son Model Kaybı: ",fit_model_result.history.loss.at(-1))
