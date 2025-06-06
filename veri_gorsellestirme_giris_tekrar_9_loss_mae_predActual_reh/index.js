@@ -237,7 +237,7 @@ async function trainAndPredict(){
     inputRaw.array().then(inputs=>{
         pred.array().then(preds=>{
             for(let i=0;i<inputs.length;i++){
-                console.log(`Tahmin: ${inputs[i]} => Tahmin ${preds[i][0].toFixed(2)} TL`)
+                console.log(`Girdi: ${inputs[i]} => Tahmin ${preds[i][0].toFixed(2)} TL`)
             }
         })
     })
