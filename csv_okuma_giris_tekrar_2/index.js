@@ -107,7 +107,7 @@ const {normalize : ysNorm, min : ysMin, max : ysMax} = normalize(ysRaw)
 
      // model gizli katman
      model.add(tf.layers.dropout({
-         rate : 0.01
+         rate : 0.3
      }))
 
      // model diğer katman
@@ -121,13 +121,13 @@ const {normalize : ysNorm, min : ysMin, max : ysMax} = normalize(ysRaw)
 
      // model gizli katman
      model.add(tf.layers.dropout({
-         rate : 0.01
+         rate : 0.3
      }))
 
      // model çıkış katmanı
      model.add(tf.layers.dense({
          units : 1,
-         activation : "relu",
+         activation : "sigmoid",
      }))
 
      // model derleyelim
