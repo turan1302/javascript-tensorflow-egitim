@@ -144,25 +144,80 @@ async function trainAndPredict(){
 
     // eğitim kısmı olayı
     const inputRaw = tf.tensor2d( [
-        [55, 1, 15000, 1, 7],
-        [48, 0, 0, 0, 4],
-        [62, 1, 18000, 1, 8],
-        [37, 0, 0, 0, 3],
-        [53, 1, 12000, 1, 6],
-        [35, 0, 0, 0, 2],
-        [57, 1, 17000, 1, 7],
-        [49, 0, 0, 0, 4],
-        [63, 1, 21000, 1, 9],
-        [42, 0, 0, 0, 3],
-        [55, 1, 14000, 1, 6],
-        [38, 0, 0, 0, 3],
-        [61, 1, 19000, 1, 8],
-        [47, 0, 0, 0, 5],
-        [54, 1, 15000, 1, 7]
+        [54,1,16000,1,7],
+        [46,0,0,0,5],
+        [60,1,17000,1,8],
+        [38,0,0,0,2],
+        [52,1,12000,1,6],
+        [43,0,0,0,4],
+        [57,1,15000,1,7],
+        [49,0,0,0,4],
+        [40,1,14000,1,6],
+        [61,1,21000,1,9],
+        [36,0,0,0,3],
+        [55,1,18000,1,7],
+        [48,0,0,0,5],
+        [64,1,22000,1,9],
+        [42,0,0,0,3],
+        [56,1,14000,1,6],
+        [39,0,0,0,3],
+        [62,1,20000,1,8],
+        [47,0,0,0,4],
+        [53,1,15000,1,7],
+        [57,1,16000,1,7],
+        [46,0,0,0,5],
+        [59,1,18000,1,8],
+        [40,0,0,0,3],
+        [54,1,13000,1,6],
+        [44,0,0,0,4],
+        [61,1,19000,1,8],
+        [35,0,0,0,2],
+        [63,1,21000,1,9],
+        [41,0,0,0,3],
+        [55,1,14000,1,6],
+        [38,0,0,0,3],
+        [60,1,18000,1,8],
+        [47,0,0,0,4],
+        [53,1,15000,1,7],
+        [42,0,0,0,3],
+        [65,1,22000,1,9],
+        [36,0,0,0,2],
+        [58,1,17000,1,7],
+        [49,0,0,0,4],
+        [56,1,16000,1,7],
+        [37,0,0,0,3],
+        [62,1,20000,1,8],
+        [44,0,0,0,4],
+        [51,1,14000,1,6],
+        [40,0,0,0,3],
+        [59,1,18000,1,8],
+        [35,0,0,0,2],
+        [55,1,15000,1,7],
+        [48,0,0,0,5],
     ])
     const inputNorm = inputRaw.sub(xsMin).div(xsMax.sub(xsMin))
     const predNorm = loadedModel.predict(inputNorm)
     const pred = predNorm.mul(ysMax.sub(ysMin)).add(ysMin)
+
+
+    Promise.all([predNorm.data(), ysNorm.data()]).then(([predsDataNorm, actualDataNorm]) => {
+        // Denormalize et
+        const predsData = predsDataNorm.map(v => v * (ysMax.arraySync()[0] - ysMin.arraySync()[0]) + ysMin.arraySync()[0]);
+        const actualData = actualDataNorm.map(v => v * (ysMax.arraySync()[0] - ysMin.arraySync()[0]) + ysMin.arraySync()[0]);
+
+        const mean = actualData.reduce((a, b) => a + b, 0) / actualData.length;
+        const ssTot = actualData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
+
+        if (ssTot === 0) {
+            console.error("Tüm gerçek değerler aynı, R² hesaplanamaz.");
+            return;
+        }
+
+        const ssRes = actualData.reduce((sum, val, i) => sum + Math.pow(val - predsData[i], 2), 0);
+        const r2 = 1 - (ssRes / ssTot);
+
+        console.log(`📈 Tüm Veride R² Skoru: ${r2.toFixed(4)} (${(r2 * 100).toFixed(2)}%)`);
+    });
 
 
     // doğruluk analizi
