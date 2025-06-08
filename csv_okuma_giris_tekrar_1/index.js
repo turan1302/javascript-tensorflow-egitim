@@ -124,6 +124,38 @@ async function createModel() {
     return model;
 }
 
+async function calculateR2(model, xsNorm, ysNorm, ysMin, ysMax) {
+    // Model tahmini (normalize veri üzerinde)
+    const predNorm = model.predict(xsNorm);
+
+    // Asenkron şekilde verileri al
+    const [predsDataNorm, actualDataNorm] = await Promise.all([predNorm.data(), ysNorm.data()]);
+
+    // Denormalize et (min ve max'ı tek boyutlu array olarak alalım)
+    const ysMinVal = ysMin.dataSync()[0];
+    const ysMaxVal = ysMax.dataSync()[0];
+
+    const predsData = predsDataNorm.map(v => v * (ysMaxVal - ysMinVal) + ysMinVal);
+    const actualData = actualDataNorm.map(v => v * (ysMaxVal - ysMinVal) + ysMinVal);
+
+    const mean = actualData.reduce((a, b) => a + b, 0) / actualData.length;
+
+    const ssTot = actualData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
+
+    if (ssTot === 0) {
+        console.error("Tüm gerçek değerler aynı, R² hesaplanamaz.");
+        return NaN;
+    }
+
+    const ssRes = actualData.reduce((sum, val, i) => sum + Math.pow(val - predsData[i], 2), 0);
+
+    const r2 = 1 - ssRes / ssTot;
+
+    console.log(`📈 Eğitim Verisi Üzerinde R² Skoru: ${r2.toFixed(4)} (${(r2 * 100).toFixed(2)}%)`);
+
+    return r2;
+}
+
 // model eğitme ve tahmin kısmı
 async function trainAndPredict() {
     const model = await createModel();
@@ -264,30 +296,6 @@ async function trainAndPredict() {
     const predNorm = loadedModel.predict(inputNorm);
     const pred = predNorm.mul(ysMax.sub(ysMin)).add(ysMin);
 
-    // R^2 hesaplama işlemi!!!
-    Promise.all([predNorm.data(), ysNorm.data()]).then(([predsDataNorm, actualDataNorm]) => {
-        // Denormalize et
-        const predsData = predsDataNorm.map(
-            (v) => v * (ysMax.arraySync()[0] - ysMin.arraySync()[0]) + ysMin.arraySync()[0]
-        );
-        const actualData = actualDataNorm.map(
-            (v) => v * (ysMax.arraySync()[0] - ysMin.arraySync()[0]) + ysMin.arraySync()[0]
-        );
-
-        const mean = actualData.reduce((a, b) => a + b, 0) / actualData.length;
-        const ssTot = actualData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
-
-        if (ssTot === 0) {
-            console.error("Tüm gerçek değerler aynı, R² hesaplanamaz.");
-            return;
-        }
-
-        const ssRes = actualData.reduce((sum, val, i) => sum + Math.pow(val - predsData[i], 2), 0);
-        const r2 = 1 - ssRes / ssTot;
-
-        console.log(`📈 Tüm Veride R² Skoru: ${r2.toFixed(4)} (${(r2 * 100).toFixed(2)}%)`);
-    });
-
     // doğruluk analizi
     const [lossTensor, maeTensor] = await loadedModel.evaluate(xsNorm, ysNorm);
 
@@ -403,6 +411,9 @@ async function trainAndPredict() {
                 );
             });
     });
+
+    // R^2 hesaplama işlemi!!!
+    await calculateR2(model, xsNorm, ysNorm, ysMin, ysMax);
 }
 
 trainAndPredict();
