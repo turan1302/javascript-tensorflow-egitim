@@ -72,11 +72,11 @@ async function createModel() {
     // giriş katmanı
     model.add(
         tf.layers.dense({
-            units: 16,
+            units: 64,
             inputShape: [5],
             activation: "relu",
             kernelRegularizer: tf.regularizers.l2({
-                l2: 0.01,
+                l2: 0.001,
             }),
         })
     );
@@ -84,17 +84,17 @@ async function createModel() {
     // gizli katman dropout
     model.add(
         tf.layers.dropout({
-            rate: 0.01,
+            rate: 0.3,
         })
     );
 
     // gizli katman
     model.add(
         tf.layers.dense({
-            units: 7,
+            units: 35,
             activation: "relu",
             kernelRegularizer: tf.regularizers.l2({
-                l2: 0.01,
+                l2: 0.001,
             }),
         })
     );
@@ -102,7 +102,25 @@ async function createModel() {
     // gizli katman dropout
     model.add(
         tf.layers.dropout({
-            rate: 0.01,
+            rate: 0.3,
+        })
+    );
+
+    // gizli katman
+    model.add(
+        tf.layers.dense({
+            units: 14,
+            activation: "relu",
+            kernelRegularizer: tf.regularizers.l2({
+                l2: 0.001,
+            }),
+        })
+    );
+
+    // gizli katman dropout
+    model.add(
+        tf.layers.dropout({
+            rate: 0.3,
         })
     );
 
@@ -110,15 +128,15 @@ async function createModel() {
     model.add(
         tf.layers.dense({
             units: 1,
-            activation: "linear",
+            activation: "sigmoid",
         })
     );
 
     // model compile
     model.compile({
-        optimizer: "adam",
-        loss: "meanSquaredError",
-        metrics: ["mae"],
+        optimizer: tf.train.adam(0.001),
+        loss: "binaryCrossentropy",
+        metrics: ["accuracy","mae","mse"],
     });
 
     return model;
@@ -160,8 +178,9 @@ async function calculateR2(model, xsNorm, ysNorm, ysMin, ysMax) {
 async function trainAndPredict() {
     const model = await createModel();
 
-    const lossValues = [];
-    const maeValues = [];
+    const lossValues = []
+    const maeValues = []
+    const accuracyValues = []
 
     // modeli eğit
     const fitResult = await model.fit(xsNorm, ysNorm, {
@@ -170,6 +189,7 @@ async function trainAndPredict() {
             onEpochEnd: async (epoch, logs) => {
                 lossValues.push(logs.loss);
                 maeValues.push(logs.mae);
+                accuracyValues.push(logs.acc || logs.accuracy)
             },
         },
     });
@@ -180,9 +200,9 @@ async function trainAndPredict() {
     // modeli yükle
     const loadedModel = await tf.loadLayersModel("file://./model/model.json");
     loadedModel.compile({
-        optimizer: "adam",
-        loss: "meanSquaredError",
-        metrics: ["mae"],
+        optimizer: tf.train.adam(0.001),
+        loss: "binaryCrossentropy",
+        metrics: ["accuracy","mae","mse"],
     });
 
     // eğitim için örnek girişler
@@ -300,7 +320,8 @@ async function trainAndPredict() {
     const [lossTensor, maeTensor] = await loadedModel.evaluate(xsNorm, ysNorm);
 
     console.log("Son Model Kaybı: ", fitResult.history.loss.at(-1));
-    console.log("Doğruluk (Loss): ", lossTensor.dataSync()[0]);
+    console.log("Genel Kayıp (Loss): ", lossTensor.dataSync()[0]);
+    console.log("Doğrulama Doğruluğu (Val_Accuracy): ", fitResult.history.acc?.at(-1));
 
     // loss grafiği
     plot(
